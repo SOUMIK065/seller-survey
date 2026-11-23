@@ -143,6 +143,12 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
 .share h2{font:700 20px/1.25 var(--display);margin:0 0 6px}
 
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.lang{display:flex;gap:8px;margin:0 0 18px}
+.lang button{-webkit-appearance:none;appearance:none;font:600 15px/1 var(--text);min-height:40px;padding:0 16px;border:1.5px solid var(--line);border-radius:20px;background:#fff;color:var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lang button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.lang button:focus-visible{outline:3px solid rgba(27,58,158,.45);outline-offset:2px}
+html[lang="bn"] *,html[lang="hi"] *{letter-spacing:0!important}
+html[lang="bn"] h1,html[lang="hi"] h1,html[lang="bn"] h2,html[lang="hi"] h2{line-height:1.35}
 .nojs{margin:0;padding:24px 20px;font-size:18px}
 
 @media (min-width:700px){
@@ -163,7 +169,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
   <div class="col">
     <div class="brand">
       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="3" width="20" height="16" rx="4" fill="#FFE14D"/><path d="M5.5 11.2l3.7 3.6 7.3-7.6" fill="none" stroke="#1B3A9E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Seller survey
+      <span id="brandTxt">Seller survey</span>
     </div>
     <div class="count" id="count"></div>
   </div>
@@ -401,7 +407,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
     }
     (kids || []).forEach(function (c) {
       if (c === null || c === undefined) return;
-      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      el.appendChild(typeof c === "string" ? document.createTextNode(tl(c)) : c);
     });
     return el;
   }
@@ -442,9 +448,209 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
   var S = {
     step: -1, answers: {}, text: {},
     contact: { name: "", reach: "", page: "" },
-    ideaOrder: null, t0: 0, secs: null, id: genId(), sending: false, sent: false
+    ideaOrder: null, t0: 0, secs: null, id: genId(), sending: false, sent: false, lang: "en"
   };
   var histOK = false;
+
+  /* ================================================================
+     LANGUAGES: English (default), Bengali, Hindi.
+     One row per text: [English, Bengali, Hindi]. The English text is the lookup key and must match the
+     text used in the questions above exactly. A text with no row simply stays in English, so rows can be
+     added at any time. Answers are always saved in English; only the language name is recorded.
+     ================================================================ */
+  var LANGS = [["en", "English"], ["bn", "বাংলা"], ["hi", "हिन्दी"]];
+  var TX = [
+    ["Seller survey", "বিক্রেতা সমীক্ষা", "विक्रेता सर्वे"],
+    ["Back", "পেছনে", "वापस"],
+    ["Start the survey", "সমীক্ষা শুরু করুন", "सर्वे शुरू करें"],
+    ["Next", "পরবর্তী", "आगे"],
+    ["Send my answers", "আমার উত্তর পাঠান", "मेरे जवाब भेजें"],
+    ["Sending…", "পাঠানো হচ্ছে…", "भेजा जा रहा है…"],
+    ["Step {n} of {m}", "ধাপ {n} / {m}", "चरण {n} / {m}"],
+    ["Sound familiar?", "চেনা লাগছে?", "जाना-पहचाना लगता है?"],
+    ["If you sell on Facebook, Instagram or WhatsApp, we'd like to hear how it really works for you: orders, messages, payments and parcels.",
+     "আপনি যদি ফেসবুক, ইনস্টাগ্রাম বা হোয়াটসঅ্যাপে বিক্রি করেন, তাহলে বাস্তবে কেমন চলছে তা আমরা আপনার মুখে শুনতে চাই: অর্ডার, মেসেজ, পেমেন্ট আর পার্সেল।",
+     "अगर आप फेसबुक, इंस्टाग्राम या व्हाट्सऐप पर बेचते हैं, तो हम आपसे जानना चाहते हैं कि यह असल में कैसे चलता है: ऑर्डर, मैसेज, पेमेंट और पार्सल।"],
+    ["This is independent research. Your honest answers decide what is worth building for sellers like you.",
+     "এটি একটি স্বাধীন গবেষণা। আপনার সৎ উত্তরই ঠিক করবে আপনার মতো বিক্রেতাদের জন্য কী বানানো সত্যিই কাজের।",
+     "यह एक स्वतंत्र शोध है। आपके ईमानदार जवाब तय करेंगे कि आप जैसे विक्रेताओं के लिए क्या बनाना सचमुच काम का है।"],
+    ["Survey by {name}", "সমীক্ষা: {name}", "सर्वे: {name}"],
+    ["About 3 minutes", "প্রায় 3 মিনিট", "लगभग 3 मिनट"],
+    ["No sign-in", "সাইন-ইন লাগবে না", "साइन-इन की ज़रूरत नहीं"],
+    ["Contact details are optional", "যোগাযোগের তথ্য দেওয়া ঐচ্ছিক", "संपर्क की जानकारी देना वैकल्पिक है"],
+    ["What happens to my answers?", "আমার উত্তরের কী হয়?", "मेरे जवाबों का क्या होता है?"],
+    ["Your answers are used only for this research. Contact details are optional, kept separately from your answers, and never shown publicly.",
+     "আপনার উত্তর শুধু এই গবেষণার কাজে ব্যবহার করা হয়। যোগাযোগের তথ্য ঐচ্ছিক, উত্তর থেকে আলাদা রাখা হয় এবং কখনো সবার সামনে দেখানো হয় না।",
+     "आपके जवाब सिर्फ़ इस शोध के लिए इस्तेमाल होते हैं। संपर्क की जानकारी वैकल्पिक है, जवाबों से अलग रखी जाती है और कभी सार्वजनिक नहीं की जाती।"],
+    ["Received", "গৃহীত", "प्राप्त"],
+    ["Thank you.", "ধন্যবাদ।", "धन्यवाद।"],
+    ["We truly appreciate the valuable time you gave us. Your answers are in. Our founder personally reads and analyses every response, and yours will help decide what gets built next.",
+     "আপনি যে মূল্যবান সময় দিয়েছেন, তার জন্য আমরা সত্যিই কৃতজ্ঞ। আপনার উত্তর পেয়ে গেছি। আমাদের প্রতিষ্ঠাতা নিজে প্রতিটি উত্তর পড়েন ও বিশ্লেষণ করেন, আর আপনার উত্তর ঠিক করতে সাহায্য করবে এরপর কী তৈরি হবে।",
+     "आपने जो कीमती समय दिया, उसके लिए हम दिल से आभारी हैं। आपके जवाब हमें मिल गए हैं। हमारे संस्थापक खुद हर जवाब पढ़ते और उसका विश्लेषण करते हैं, और आपके जवाब से तय होगा कि आगे क्या बनाया जाए।"],
+    ["If you chose to be contacted, we may reach out for a short chat about your experience. Otherwise there is nothing more to do.",
+     "আপনি যদি যোগাযোগের অনুমতি দিয়ে থাকেন, আমরা আপনার অভিজ্ঞতা নিয়ে একটু কথা বলতে যোগাযোগ করতে পারি। না হলে আর কিছু করার নেই।",
+     "अगर आपने संपर्क करने की अनुमति दी है, तो हम आपके अनुभव पर थोड़ी बात करने के लिए संपर्क कर सकते हैं। नहीं तो आपको और कुछ करने की ज़रूरत नहीं है।"],
+    ["Know another seller?", "আর কোনো বিক্রেতাকে চেনেন?", "किसी और विक्रेता को जानते हैं?"],
+    ["Their experience matters too. Share the survey with them.", "তাঁদের অভিজ্ঞতাও গুরুত্বপূর্ণ। সমীক্ষাটি তাঁদের সঙ্গে শেয়ার করুন।", "उनका अनुभव भी मायने रखता है। यह सर्वे उनके साथ शेयर करें।"],
+    ["Send on WhatsApp", "হোয়াটসঅ্যাপে পাঠান", "व्हाट्सऐप पर भेजें"],
+    ["Copy link", "লিংক কপি করুন", "लिंक कॉपी करें"],
+    ["Link copied", "লিংক কপি হয়েছে", "लिंक कॉपी हो गया"],
+    ["A 3-minute survey for people who sell on Facebook, Instagram or WhatsApp. No sign-in:",
+     "যাঁরা ফেসবুক, ইনস্টাগ্রাম বা হোয়াটসঅ্যাপে বিক্রি করেন, তাঁদের জন্য 3 মিনিটের একটি সমীক্ষা। সাইন-ইন লাগবে না:",
+     "फेसबुक, इंस्टाग्राम या व्हाट्सऐप पर बेचने वालों के लिए 3 मिनट का सर्वे। साइन-इन की ज़रूरत नहीं:"],
+    ["Want us to get in touch?", "আমরা কি আপনার সঙ্গে যোগাযোগ করব?", "क्या हम आपसे संपर्क करें?"],
+    ["Only if you would like to. You can leave all of this empty and still send your answers.", "শুধু আপনি চাইলে। এগুলো খালি রেখেও উত্তর পাঠাতে পারবেন।", "सिर्फ़ अगर आप चाहें। ये सब खाली छोड़कर भी आप जवाब भेज सकते हैं।"],
+    ["Your name", "আপনার নাম", "आपका नाम"],
+    ["Phone, WhatsApp number or email", "ফোন, হোয়াটসঅ্যাপ নম্বর বা ইমেল", "फ़ोन, व्हाट्सऐप नंबर या ईमेल"],
+    ["Your Facebook or Instagram page", "আপনার ফেসবুক বা ইনস্টাগ্রাম পেজ", "आपका फेसबुक या इंस्टाग्राम पेज"],
+    ["(optional)", "(ঐচ্ছিক)", "(वैकल्पिक)"],
+    ["This does not look like a phone number or email. Check it, or clear it. You can still send your answers.",
+     "এটি ফোন নম্বর বা ইমেলের মতো দেখাচ্ছে না। একবার দেখে নিন, নয়তো মুছে দিন। তবুও উত্তর পাঠাতে পারবেন।",
+     "यह फ़ोन नंबर या ईमेल जैसा नहीं लग रहा। इसे जाँच लें या हटा दें। आप फिर भी जवाब भेज सकते हैं।"],
+    ["Used only to contact you about this research. Stored separately from your answers and never shown publicly.",
+     "শুধু এই গবেষণা নিয়ে আপনার সঙ্গে যোগাযোগের জন্য ব্যবহার করা হবে। উত্তর থেকে আলাদা রাখা হয়, কখনো সবার সামনে দেখানো হয় না।",
+     "सिर्फ़ इस शोध के बारे में आपसे संपर्क करने के लिए इस्तेमाल होगा। जवाबों से अलग रखा जाता है और कभी सार्वजनिक नहीं किया जाता।"],
+    ["Choose one answer to continue.", "এগোতে একটি উত্তর বেছে নিন।", "आगे बढ़ने के लिए एक जवाब चुनें।"],
+    ["Choose at least one answer to continue.", "এগোতে অন্তত একটি উত্তর বেছে নিন।", "आगे बढ़ने के लिए कम से कम एक जवाब चुनें।"],
+    ["Your answers have not been sent yet. Check your internet connection, then tap Send my answers again. Nothing is lost.",
+     "আপনার উত্তর এখনও পাঠানো হয়নি। ইন্টারনেট সংযোগ দেখে নিয়ে আবার “আমার উত্তর পাঠান” চাপুন। কিছুই হারায়নি।",
+     "आपके जवाब अभी भेजे नहीं गए हैं। इंटरनेट कनेक्शन जाँचें, फिर दोबारा “मेरे जवाब भेजें” दबाएँ। कुछ भी खोया नहीं है।"]
+  ];
+  TX = TX.concat([
+    ["Price?", "দাম কত?", "रेट क्या है?"],
+    ["Is it available in M?", "M সাইজ আছে?", "M साइज़ है?"],
+    ["Please send your number", "আপনার নম্বরটা দিন", "अपना नंबर भेजिए"],
+    ["Is COD possible?", "COD হবে?", "COD हो जाएगा?"],
+    ["About your selling", "আপনার বিক্রি সম্পর্কে", "आपकी बिक्री के बारे में"],
+    ["Three quick taps.", "মাত্র তিনটি ট্যাপ।", "बस तीन टैप।"],
+    ["Where do you sell most?", "আপনি সবচেয়ে বেশি কোথায় বিক্রি করেন?", "आप सबसे ज़्यादा कहाँ बेचते हैं?"],
+    ["Choose all that apply.", "যা যা প্রযোজ্য সব বেছে নিন।", "जो भी लागू हों, सब चुनें।"],
+    ["Facebook page", "ফেসবুক পেজ", "फेसबुक पेज"],
+    ["Facebook profile, groups or Marketplace", "ফেসবুক প্রোফাইল, গ্রুপ বা মার্কেটপ্লেস", "फेसबुक प्रोफ़ाइल, ग्रुप या मार्केटप्लेस"],
+    ["Instagram", "ইনস্টাগ্রাম", "इंस्टाग्राम"],
+    ["WhatsApp (status, catalogue or groups)", "হোয়াটসঅ্যাপ (স্ট্যাটাস, ক্যাটালগ বা গ্রুপ)", "व्हाट्सऐप (स्टेटस, कैटलॉग या ग्रुप)"],
+    ["My own website or another app", "আমার নিজের ওয়েবসাইট বা অন্য কোনো অ্যাপ", "मेरी अपनी वेबसाइट या कोई दूसरा ऐप"],
+    ["Offline shop or market stall", "অফলাইন দোকান বা বাজারের স্টল", "ऑफ़लाइन दुकान या बाज़ार का स्टॉल"],
+    ["I don't sell online yet", "আমি এখনও অনলাইনে বিক্রি করি না", "मैं अभी ऑनलाइन नहीं बेचता/बेचती"],
+    ["About how many orders do you get in a normal week?", "সাধারণ এক সপ্তাহে আপনি মোটামুটি কয়টি অর্ডার পান?", "आम तौर पर एक हफ़्ते में आपको लगभग कितने ऑर्डर मिलते हैं?"],
+    ["Fewer than 5", "5-এর কম", "5 से कम"],
+    ["5 to 20", "5 থেকে 20", "5 से 20"],
+    ["21 to 50", "21 থেকে 50", "21 से 50"],
+    ["More than 50", "50-এর বেশি", "50 से ज़्यादा"],
+    ["What do you mainly sell?", "আপনি মূলত কী বিক্রি করেন?", "आप मुख्य रूप से क्या बेचते हैं?"],
+    ["Clothing and fashion", "পোশাক ও ফ্যাশন", "कपड़े और फ़ैशन"],
+    ["Jewellery and accessories", "গয়না ও অ্যাকসেসরিজ", "ज्वेलरी और एक्सेसरीज़"],
+    ["Handmade, crafts and home décor", "হাতে তৈরি জিনিস, কারুশিল্প ও ঘর সাজানোর সামগ্রী", "हस्तनिर्मित सामान, क्राफ़्ट और होम डेकोर"],
+    ["Food and homemade items", "খাবার ও ঘরে তৈরি জিনিস", "खाने-पीने का सामान और घर का बना सामान"],
+    ["Beauty and personal care", "সৌন্দর্য ও ব্যক্তিগত যত্ন", "ब्यूटी और पर्सनल केयर"],
+    ["Gadgets and electronics", "গ্যাজেট ও ইলেকট্রনিক্স", "गैजेट और इलेक्ट्रॉनिक्स"],
+    ["Something else", "অন্য কিছু", "कुछ और"],
+    ["How selling works today", "বর্তমানে বিক্রি কীভাবে চলে", "आज बिक्री कैसे चलती है"],
+    ["Your real routine, not the ideal one.", "আপনার আসল রুটিন, আদর্শ রুটিন নয়।", "आपकी असली दिनचर्या, आदर्श वाली नहीं।"],
+    ["How do customers usually place orders with you?", "ক্রেতারা সাধারণত কীভাবে আপনাকে অর্ডার দেন?", "ग्राहक आम तौर पर आपको ऑर्डर कैसे देते हैं?"],
+    ["WhatsApp message", "হোয়াটসঅ্যাপ মেসেজ", "व्हाट्सऐप मैसेज"],
+    ["Phone call", "ফোন কল", "फ़ोन कॉल"],
+    ["Facebook or Instagram message (DM)", "ফেসবুক বা ইনস্টাগ্রাম মেসেজ (DM)", "फेसबुक या इंस्टाग्राम मैसेज (DM)"],
+    ["Comment on my post", "আমার পোস্টে কমেন্ট", "मेरी पोस्ट पर कमेंट"],
+    ["They visit in person", "নিজে এসে অর্ডার দেন", "खुद आकर ऑर्डर देते हैं"],
+    ["Through a website or app", "ওয়েবসাইট বা অ্যাপের মাধ্যমে", "वेबसाइट या ऐप के ज़रिए"],
+    ["In your own words: what is the biggest headache in selling on Facebook or Instagram?", "নিজের ভাষায় বলুন: ফেসবুক বা ইনস্টাগ্রামে বিক্রি করতে সবচেয়ে বড় ঝামেলা কী?", "अपने शब्दों में बताइए: फेसबुक या इंस्टाग्राम पर बेचने में सबसे बड़ी परेशानी क्या है?"],
+    ["Optional. One or two lines is plenty.", "ঐচ্ছিক। এক-দুই লাইনই যথেষ্ট।", "वैकल्पिक। एक-दो पंक्तियाँ काफ़ी हैं।"],
+    ["Which of these cause you the most trouble?", "এর মধ্যে কোনগুলো আপনাকে সবচেয়ে বেশি সমস্যায় ফেলে?", "इनमें से कौन-सी बातें आपको सबसे ज़्यादा परेशान करती हैं?"],
+    ["Choose up to 3.", "সর্বোচ্চ 3টি বেছে নিন।", "ज़्यादा से ज़्यादा 3 चुनें।"],
+    ["Answering the same questions again and again", "একই প্রশ্নের উত্তর বারবার দেওয়া", "एक ही सवाल का जवाब बार-बार देना"],
+    ["My phone number being public: calls and messages at any hour", "আমার ফোন নম্বর সবার সামনে থাকা: যখন-তখন কল ও মেসেজ", "मेरा फ़ोन नंबर सबके सामने होना: किसी भी वक़्त कॉल और मैसेज"],
+    ["Keeping track of orders across chats and calls", "চ্যাট ও কলে আসা অর্ডারের হিসাব রাখা", "चैट और कॉल में आए ऑर्डर का हिसाब रखना"],
+    ["Fake or edited payment screenshots", "জাল বা এডিট করা পেমেন্টের স্ক্রিনশট", "नकली या एडिट किए हुए पेमेंट स्क्रीनशॉट"],
+    ["Buyers who ask a lot, then never pay", "যে ক্রেতারা অনেক জিজ্ঞেস করে, তারপর আর টাকা দেয় না", "जो खरीदार बहुत पूछते हैं, फिर पैसे नहीं देते"],
+    ["Arranging courier pickup and tracking parcels", "কুরিয়ার পিকআপের ব্যবস্থা করা ও পার্সেল ট্র্যাক করা", "कूरियर पिकअप करवाना और पार्सल ट्रैक करना"],
+    ["Finding new customers", "নতুন ক্রেতা খুঁজে পাওয়া", "नए ग्राहक ढूँढना"],
+    ["Returns, refunds and cancellations", "রিটার্ন, রিফান্ড ও অর্ডার বাতিল", "रिटर्न, रिफ़ंड और ऑर्डर कैंसिल"],
+    ["None of these", "এগুলোর কোনোটিই নয়", "इनमें से कोई नहीं"],
+    ["Has a buyer ever shown you a fake or edited payment screenshot?", "কোনো ক্রেতা কি কখনো আপনাকে জাল বা এডিট করা পেমেন্টের স্ক্রিনশট দেখিয়েছেন?", "क्या किसी खरीदार ने कभी आपको नकली या एडिट किया हुआ पेमेंट स्क्रीनशॉट दिखाया है?"],
+    ["Yes, several times", "হ্যাঁ, বেশ কয়েকবার", "हाँ, कई बार"],
+    ["Yes, once or twice", "হ্যাঁ, এক-দুবার", "हाँ, एक-दो बार"],
+    ["No, never that I know of", "না, আমার জানা মতে কখনো না", "नहीं, मेरी जानकारी में कभी नहीं"],
+    ["I don't take online payments", "আমি অনলাইনে পেমেন্ট নিই না", "मैं ऑनलाइन पेमेंट नहीं लेता/लेती"],
+    ["Five early ideas", "পাঁচটি প্রাথমিক ধারণা", "पाँच शुरुआती विचार"],
+    ["These are early ideas, not a finished product. An honest “No” helps us as much as a “Yes”.", "এগুলো প্রাথমিক ধারণা, তৈরি করা পণ্য নয়। সৎ “না” আমাদের কাছে “হ্যাঁ”-এর মতোই সাহায্যের।", "ये शुरुआती विचार हैं, तैयार प्रोडक्ट नहीं। ईमानदार “नहीं” हमारे लिए “हाँ” जितनी ही मदद करता है।"],
+    ["Today.", "বর্তমান অবস্থা।", "अभी की स्थिति।"],
+    ["The idea.", "ধারণাটি।", "विचार।"],
+    ["Would you want this?", "আপনি কি এটা চাইবেন?", "क्या आप यह चाहेंगे?"],
+    ["Private chat with auto-replies", "অটো-রিপ্লাই সহ প্রাইভেট চ্যাট", "ऑटो-रिप्लाई वाली प्राइवेट चैट"],
+    ["You share your phone or WhatsApp number on Facebook or Instagram so buyers can reach you. Anyone can call or message at any hour, and the same questions keep coming.", "ক্রেতারা যোগাযোগ করতে পারেন বলে আপনি ফেসবুক বা ইনস্টাগ্রামে ফোন বা হোয়াটসঅ্যাপ নম্বর দেন। যে কেউ যখন-তখন কল বা মেসেজ করতে পারে, আর একই প্রশ্ন বারবার আসে।", "खरीदार संपर्क कर सकें, इसलिए आप फेसबुक या इंस्टाग्राम पर फ़ोन या व्हाट्सऐप नंबर देते हैं। कोई भी किसी भी वक़्त कॉल या मैसेज कर सकता है, और वही सवाल बार-बार आते रहते हैं।"],
+    ["A built-in chat with automatic replies to common and product questions. Seller and buyer talk inside it, so neither has to share a phone number.", "সাধারণ ও পণ্যের প্রশ্নের স্বয়ংক্রিয় উত্তর সহ একটি বিল্ট-ইন চ্যাট। বিক্রেতা ও ক্রেতা এর ভেতরেই কথা বলেন, তাই কাউকেই ফোন নম্বর দিতে হয় না।", "आम और प्रोडक्ट वाले सवालों के अपने-आप जवाब देने वाली बिल्ट-इन चैट। विक्रेता और खरीदार इसी के अंदर बात करते हैं, इसलिए किसी को फ़ोन नंबर देना नहीं पड़ता।"],
+    ["Your own shop link", "আপনার নিজের শপ লিংক", "आपका अपना शॉप लिंक"],
+    ["Buyers comment “price?” or “available?”, then you collect their name, address and order details by hand.", "ক্রেতারা কমেন্টে “দাম?” বা “আছে?” লেখেন, তারপর আপনি নিজে হাতে তাঁদের নাম, ঠিকানা ও অর্ডারের তথ্য নেন।", "खरीदार कमेंट में “रेट?” या “है क्या?” लिखते हैं, फिर आप खुद उनका नाम, पता और ऑर्डर की जानकारी लिखते हैं।"],
+    ["Add each product once in a few taps and paste one shop link on your page. Buyers pick products (even from photos), enter their own address and order. You set every price and discount.", "কয়েকটি ট্যাপে প্রতিটি পণ্য একবার যোগ করুন আর আপনার পেজে একটি শপ লিংক পেস্ট করুন। ক্রেতারা পণ্য বেছে নেন (ছবি দেখেও), নিজেরাই ঠিকানা দিয়ে অর্ডার করেন। প্রতিটি দাম ও ডিসকাউন্ট আপনিই ঠিক করেন।", "कुछ टैप में हर प्रोडक्ट एक बार जोड़ें और अपने पेज पर एक शॉप लिंक चिपका दें। खरीदार प्रोडक्ट चुनते हैं (फ़ोटो देखकर भी), अपना पता डालकर ऑर्डर करते हैं। हर क़ीमत और डिस्काउंट आप ही तय करते हैं।"],
+    ["All orders in one place", "সব অর্ডার এক জায়গায়", "सारे ऑर्डर एक जगह"],
+    ["Orders arrive by calls, WhatsApp, messages and comments, then end up in a notebook or scattered chats.", "অর্ডার আসে কল, হোয়াটসঅ্যাপ, মেসেজ আর কমেন্টে, তারপর খাতায় বা ছড়িয়ে থাকা চ্যাটে পড়ে থাকে।", "ऑर्डर कॉल, व्हाट्सऐप, मैसेज और कमेंट से आते हैं, फिर किसी कॉपी या बिखरी हुई चैट में पड़े रहते हैं।"],
+    ["Every order in one simple list: who ordered what, the address, payment and dispatch status. You also get a once-a-day summary.", "প্রতিটি অর্ডার এক সহজ তালিকায়: কে কী অর্ডার করেছেন, ঠিকানা, পেমেন্ট ও পাঠানোর অবস্থা। দিনে একবার সারাংশও পাবেন।", "हर ऑर्डर एक आसान लिस्ट में: किसने क्या मँगाया, पता, पेमेंट और डिस्पैच की स्थिति। आपको दिन में एक बार का सारांश भी मिलेगा।"],
+    ["Verified payment", "যাচাই করা পেমেন্ট", "वेरिफ़ाइड पेमेंट"],
+    ["Some buyers send fake or edited payment screenshots, or promise to pay and never do.", "কিছু ক্রেতা জাল বা এডিট করা পেমেন্টের স্ক্রিনশট পাঠান, কিংবা টাকা দেবেন বলে আর দেন না।", "कुछ खरीदार नकली या एडिट किए हुए पेमेंट स्क्रीनशॉट भेजते हैं, या पैसे देने का वादा करके कभी नहीं देते।"],
+    ["An order is confirmed only after the payment is really received through a verified UPI checkout. Nothing to check by hand.", "যাচাই করা UPI চেকআউটের মাধ্যমে টাকা সত্যিই পৌঁছানোর পরেই অর্ডার নিশ্চিত হয়। নিজে হাতে কিছু মেলাতে হয় না।", "वेरिफ़ाइड UPI चेकआउट से पैसे सचमुच आने के बाद ही ऑर्डर कन्फ़र्म होता है। हाथ से कुछ जाँचना नहीं पड़ता।"],
+    ["Courier pickup", "কুরিয়ার পিকআপ", "कूरियर पिकअप"],
+    ["After each order you arrange the courier yourself: forms, pickup and tracking updates for the buyer.", "প্রতিটি অর্ডারের পর কুরিয়ারের ব্যবস্থা আপনি নিজেই করেন: ফর্ম, পিকআপ আর ক্রেতাকে ট্র্যাকিং আপডেট।", "हर ऑर्डर के बाद कूरियर का इंतज़ाम आप खुद करते हैं: फ़ॉर्म, पिकअप और खरीदार को ट्रैकिंग अपडेट।"],
+    ["Book a courier pickup and track the parcel from the same place.", "একই জায়গা থেকে কুরিয়ার পিকআপ বুক করুন ও পার্সেল ট্র্যাক করুন।", "उसी जगह से कूरियर पिकअप बुक करें और पार्सल ट्रैक करें।"],
+    ["Yes, I really need this", "হ্যাঁ, এটা আমার সত্যিই দরকার", "हाँ, मुझे इसकी सच में ज़रूरत है"],
+    ["Yes, it would help me", "হ্যাঁ, এটা আমার কাজে লাগবে", "हाँ, इससे मेरी मदद होगी"],
+    ["Maybe, I'd like to see how it works", "হয়তো, কীভাবে কাজ করে দেখতে চাই", "शायद, मैं देखना चाहूँगा/चाहूँगी कि यह कैसे काम करता है"],
+    ["No, my current way is fine", "না, আমার এখনকার উপায়ই ঠিক আছে", "नहीं, मेरा मौजूदा तरीक़ा ठीक है"],
+    ["This isn't a problem for me", "এটা আমার কাছে সমস্যা নয়", "यह मेरे लिए कोई समस्या नहीं है"],
+    ["Putting it together", "সব মিলিয়ে", "सब कुछ मिलाकर"],
+    ["Last few questions. Thank you for staying with us.", "শেষ কয়েকটি প্রশ্ন। আমাদের সঙ্গে থাকার জন্য ধন্যবাদ।", "आख़िरी कुछ सवाल। हमारे साथ बने रहने के लिए धन्यवाद।"],
+    ["All of it in one system", "সবকিছু একটি সিস্টেমে", "सब कुछ एक ही सिस्टम में"],
+    ["Imagine one simple system with:", "কল্পনা করুন একটি সহজ সিস্টেম, যেখানে আছে:", "सोचिए एक आसान सिस्टम, जिसमें हो:"],
+    ["A shop link for your Facebook or Instagram page", "আপনার ফেসবুক বা ইনস্টাগ্রাম পেজের জন্য একটি শপ লিংক", "आपके फेसबुक या इंस्टाग्राम पेज के लिए एक शॉप लिंक"],
+    ["Private buyer chat with automatic replies, so no phone numbers are shared", "স্বয়ংক্রিয় উত্তর সহ প্রাইভেট ক্রেতা-চ্যাট, তাই ফোন নম্বর কাউকে দিতে হয় না", "अपने-आप जवाब वाली प्राइवेट खरीदार चैट, इसलिए फ़ोन नंबर किसी को देना नहीं पड़ता"],
+    ["Orders confirmed only after verified UPI payment", "যাচাই করা UPI পেমেন্টের পরেই অর্ডার নিশ্চিত", "वेरिफ़ाइड UPI पेमेंट के बाद ही ऑर्डर कन्फ़र्म"],
+    ["Every order in one place, with a daily summary", "প্রতিটি অর্ডার এক জায়গায়, সঙ্গে দৈনিক সারাংশ", "हर ऑर्डर एक जगह, साथ में रोज़ का सारांश"],
+    ["Courier pickup booked from the same place", "একই জায়গা থেকে কুরিয়ার পিকআপ বুক", "उसी जगह से कूरियर पिकअप बुक"],
+    ["If you had this, what would you do?", "এটা পেলে আপনি কী করবেন?", "अगर आपके पास यह होता, तो आप क्या करते?"],
+    ["Start using it as soon as it is ready", "তৈরি হলেই ব্যবহার শুরু করব", "तैयार होते ही इस्तेमाल शुरू करूँगा/करूँगी"],
+    ["Try it with a few orders first", "আগে কয়েকটি অর্ডার দিয়ে চেষ্টা করব", "पहले कुछ ऑर्डर के साथ आज़माऊँगा/आज़माऊँगी"],
+    ["See it working and know the cost first", "আগে চলতে দেখব আর খরচ জানব", "पहले इसे चलते देखूँगा/देखूँगी और ख़र्च जानूँगा/जानूँगी"],
+    ["Keep using my current way", "আমার এখনকার উপায়েই চালিয়ে যাব", "अपना मौजूदा तरीक़ा ही चलाता/चलाती रहूँगा/रहूँगी"],
+    ["I am not sure", "আমি নিশ্চিত নই", "मुझे पक्का नहीं पता"],
+    ["What could stop you from using a system like this?", "এমন সিস্টেম ব্যবহারে আপনাকে কী আটকাতে পারে?", "ऐसा सिस्टम इस्तेमाल करने से आपको क्या रोक सकता है?"],
+    ["Choose up to 2.", "সর্বোচ্চ 2টি বেছে নিন।", "ज़्यादा से ज़्यादा 2 चुनें।"],
+    ["The cost", "খরচ", "ख़र्च"],
+    ["Learning a new app", "নতুন অ্যাপ শেখা", "नया ऐप सीखना"],
+    ["My customers prefer WhatsApp or calls", "আমার ক্রেতারা হোয়াটসঅ্যাপ বা কল পছন্দ করেন", "मेरे ग्राहक व्हाट्सऐप या कॉल पसंद करते हैं"],
+    ["Trusting online payments or a new platform", "অনলাইন পেমেন্ট বা নতুন প্ল্যাটফর্মে ভরসা করা", "ऑनलाइन पेमेंट या नए प्लैटफ़ॉर्म पर भरोसा करना"],
+    ["Slow internet or phone limits", "ধীর ইন্টারনেট বা ফোনের সীমাবদ্ধতা", "धीमा इंटरनेट या फ़ोन की सीमाएँ"],
+    ["Nothing would stop me", "কিছুই আমাকে আটকাবে না", "मुझे कुछ नहीं रोकेगा"],
+    ["If it really saved you time, which way of paying would feel fair?", "এটা সত্যিই সময় বাঁচালে, কোন ভাবে টাকা দেওয়াটা ন্যায্য মনে হবে?", "अगर इससे सच में आपका समय बचे, तो पैसे देने का कौन-सा तरीक़ा सही लगेगा?"],
+    ["Only if it is free", "শুধু যদি বিনামূল্যে হয়", "सिर्फ़ अगर यह मुफ़्त हो"],
+    ["A small monthly fee, under ₹300", "মাসে অল্প ফি, ₹300-এর কম", "हर महीने थोड़ी फ़ीस, ₹300 से कम"],
+    ["A monthly fee of ₹300 to ₹700", "মাসে ₹300 থেকে ₹700 ফি", "हर महीने ₹300 से ₹700 की फ़ीस"],
+    ["A small fee only when I get an order", "শুধু অর্ডার পেলে অল্প ফি", "सिर्फ़ ऑर्डर मिलने पर थोड़ी फ़ीस"],
+    ["I am not sure yet", "আমি এখনও নিশ্চিত নই", "मुझे अभी पक्का नहीं पता"],
+    ["Would you test an early version and tell us what works?", "আপনি কি একটি প্রাথমিক সংস্করণ পরীক্ষা করে আমাদের জানাবেন কী কাজ করছে?", "क्या आप एक शुरुआती वर्ज़न आज़माकर बताएँगे कि क्या काम करता है?"],
+    ["Yes, contact me", "হ্যাঁ, আমার সঙ্গে যোগাযোগ করুন", "हाँ, मुझसे संपर्क करें"],
+    ["Maybe, tell me more first", "হয়তো, আগে আরও জানান", "शायद, पहले और बताइए"],
+    ["Not right now", "এখন নয়", "अभी नहीं"],
+    ["Anything we missed, or one thing you would really want?", "আমরা কিছু বাদ দিয়েছি কি, বা এমন কোনো একটি জিনিস যা আপনি সত্যিই চান?", "क्या हमसे कुछ छूट गया, या कोई एक चीज़ जो आप सच में चाहते हैं?"],
+    ["Optional.", "ঐচ্ছিক।", "वैकल्पिक।"]
+  ]);
+  var TR = { bn: {}, hi: {} };
+  TX.forEach(function (r) { TR.bn[r[0]] = r[1]; TR.hi[r[0]] = r[2]; });
+  function tl(s) {
+    var d = TR[S.lang], m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s);
+    return d && d[m[2]] ? m[1] + d[m[2]] + m[3] : s;
+  }
+  function langBar() {
+    return h("div", { class: "lang", role: "group", "aria-label": "Language" }, LANGS.map(function (l) {
+      var b = h("button", { type: "button", lang: l[0], class: l[0] === S.lang ? "on" : "", "aria-pressed": String(l[0] === S.lang) }, [l[1]]);
+      b.addEventListener("click", function () { setLang(l[0]); });
+      return b;
+    }));
+  }
+  function setLang(k) {
+    if (S.sending || k === S.lang) return;
+    S.lang = k; document.documentElement.lang = k;
+    if (S.step < 0) renderIntro(); else if (S.step < STEPS.length) renderStep(S.step); else renderDone();
+  }
 
   function stepQuestions(i) {
     var st = STEPS[i], qs = st.questions.slice();
@@ -612,7 +818,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
       ["If you sell on Facebook, Instagram or WhatsApp, we'd like to hear how it really works for you: orders, messages, payments and parcels."]));
     intro.appendChild(h("p", null,
       ["This is independent research. Your honest answers decide what is worth building for sellers like you."]));
-    if (CONFIG.RESEARCHER) intro.appendChild(h("p", { class: "by" }, ["Survey by " + CONFIG.RESEARCHER]));
+    if (CONFIG.RESEARCHER) intro.appendChild(h("p", { class: "by" }, [tl("Survey by {name}").replace("{name}", CONFIG.RESEARCHER)]));
     intro.appendChild(h("ul", { class: "ticks" }, [
       h("li", null, ["About 3 minutes"]),
       h("li", null, ["No sign-in"]),
@@ -639,20 +845,20 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
     chrome();
   }
 
-  function shareUrl() { return location.href.split("#")[0].split("?")[0] + "?src=share"; }
+  function shareUrl() { return location.href.split("#")[0].split("?")[0] + "?src=share" + (S.lang !== "en" ? "&lang=" + S.lang : ""); }
 
   function renderDone() {
     S.step = STEPS.length;
     clear(app);
     var date = "";
-    try { date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { date = new Date().toDateString(); }
+    try { date = new Date().toLocaleDateString(S.lang + "-IN", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { date = new Date().toDateString(); }
     var sec = h("section", { class: "done" });
     sec.appendChild(h("div", { class: "stamp", "aria-hidden": "true" }, [h("b", null, ["Received"]), h("small", null, [date])]));
     sec.appendChild(h("h1", { id: "stepTitle", tabindex: "-1" }, ["Thank you."]));
     if (!CONFIG.ENDPOINT) sec.appendChild(h("p", { class: "demo", role: "note" }, ["Preview mode: this answer was not saved."]));
     sec.appendChild(h("p", null, ["We truly appreciate the valuable time you gave us. Your answers are in. Our founder personally reads and analyses every response, and yours will help decide what gets built next."]));
     sec.appendChild(h("p", null, ["If you chose to be contacted, we may reach out for a short chat about your experience. Otherwise there is nothing more to do."]));
-    var text = "A 3-minute survey for people who sell on Facebook, Instagram or WhatsApp. No sign-in:";
+    var text = tl("A 3-minute survey for people who sell on Facebook, Instagram or WhatsApp. No sign-in:");
     var wa = h("a", { class: "btn soft", target: "_blank", rel: "noopener", href: "https://wa.me/?text=" + encodeURIComponent(text + " " + shareUrl()) }, ["Send on WhatsApp"]);
     var cp = h("button", { type: "button", class: "btn soft" }, ["Copy link"]);
     cp.addEventListener("click", function () { copyText(shareUrl(), cp); });
@@ -662,7 +868,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
   }
 
   function copyText(text, btn) {
-    function ok() { btn.textContent = "Link copied"; }
+    function ok() { btn.textContent = tl("Link copied"); }
     function fallback() {
       var ta = h("textarea", { readonly: true, style: "position:fixed;opacity:0;top:0" });
       ta.value = text; document.body.appendChild(ta); ta.select();
@@ -675,11 +881,14 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
   function chrome() {
     var n = STEPS.length, s = S.step;
     $("bar").style.width = (s < 0 ? 0 : s >= n ? 100 : ((s + 1) / n) * 100) + "%";
-    $("count").textContent = (s >= 0 && s < n) ? "Step " + (s + 1) + " of " + n : "";
+    $("count").textContent = (s >= 0 && s < n) ? tl("Step {n} of {m}").replace("{n}", s + 1).replace("{m}", n) : "";
     $("nav").hidden = s >= n;
     $("btnBack").hidden = !(s >= 0 && s < n);
-    $("btnGo").textContent = s < 0 ? "Start the survey" : (s < n - 1 ? "Next" : "Send my answers");
+    $("btnBack").textContent = tl("Back");
+    $("brandTxt").textContent = tl("Seller survey");
+    $("btnGo").textContent = tl(s < 0 ? "Start the survey" : (s < n - 1 ? "Next" : "Send my answers"));
     $("btnGo").disabled = false;
+    app.insertBefore(langBar(), app.firstChild);
     showFail("");
     window.scrollTo(0, 0);
     var t = $("stepTitle");
@@ -708,7 +917,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
     stepQuestions(i).forEach(function (q) {
       if (q.type !== "single" && q.type !== "multi") return;
       var sec = $("q_" + q.id), msg = "", n = (S.answers[q.id] || []).length;
-      if (q.required && !n) msg = q.type === "single" ? "Choose one answer to continue." : "Choose at least one answer to continue.";
+      if (q.required && !n) msg = tl(q.type === "single" ? "Choose one answer to continue." : "Choose at least one answer to continue.");
       setErr(sec, msg);
       if (msg && !first) first = sec;
     });
@@ -758,6 +967,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
       codes[q.id] = set.slice();
       answers[q.id] = set.map(function (c) { return opt(q, c).t; });
     }); });
+    schema.ui = "Language"; answers.ui = [{ en: "English", bn: "Bengali", hi: "Hindi" }[S.lang]];
     // Contact details are sent only if the person chose to type something reachable.
     var contact = null;
     if (contactActive() && (S.contact.reach.trim() || S.contact.page.trim())) {
@@ -796,7 +1006,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
     S.sending = on;
     $("btnGo").disabled = on;
     $("btnBack").disabled = on;
-    $("btnGo").textContent = on ? "Sending…" : "Send my answers";
+    $("btnGo").textContent = tl(on ? "Sending…" : "Send my answers");
   }
 
   function submit() {
@@ -808,7 +1018,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
       if (ok) { S.sent = true; store("ss_pending", null); renderDone(); }
       else {
         store("ss_pending", JSON.stringify(payload));
-        showFail("Your answers have not been sent yet. Check your internet connection, then tap Send my answers again. Nothing is lost.");
+        showFail(tl("Your answers have not been sent yet. Check your internet connection, then tap Send my answers again. Nothing is lost."));
       }
     });
   }
@@ -833,6 +1043,8 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
   try { window.history.replaceState({ s: -1 }, ""); histOK = true; if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual"; } catch (e) { histOK = false; }
   window.addEventListener("online", retryPending);
 
+  var LNG = param("lang"); if (LNG === "bn" || LNG === "hi") S.lang = LNG;
+  document.documentElement.lang = S.lang;
   renderIntro();
   retryPending();
 })();
