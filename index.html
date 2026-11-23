@@ -192,7 +192,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
      1. SETTINGS: the only things you normally need to change
      ================================================================ */
   var CONFIG = {
-    ENDPOINT: "https://script.google.com/macros/s/AKfycbx5HiZDViuStKvVcsf3_rbzmqcaKkcNieuhuMIV5MtWyN79L6_asWb-Af94umE9fpHEow/exec",           // Paste your Google Apps Script web app URL between the quotes (see README.md)
+    ENDPOINT: "https://script.google.com/macros/s/AKfycbzYUbVBi29XRd0j_lbhTAW4-S9N9eFU_QEK6ONjK_ggaEmZgW7Vkc2jQWhmj9Lp4mzT/exec",           // Paste your Google Apps Script web app URL between the quotes (see README.md)
     RESEARCHER: "Soumik",         // Optional: your name. Shown on the first screen as "Survey by ..."
     RANDOMIZE_IDEAS: true   // Show the idea questions in a different order for each person
   };
@@ -650,7 +650,7 @@ input[type=text]:focus,textarea:focus{outline:3px solid rgba(27,58,158,.3);outli
     sec.appendChild(h("div", { class: "stamp", "aria-hidden": "true" }, [h("b", null, ["Received"]), h("small", null, [date])]));
     sec.appendChild(h("h1", { id: "stepTitle", tabindex: "-1" }, ["Thank you."]));
     if (!CONFIG.ENDPOINT) sec.appendChild(h("p", { class: "demo", role: "note" }, ["Preview mode: this answer was not saved."]));
-    sec.appendChild(h("p", null, ["Your answers are in. Every response is read by a person, and yours will help decide what gets built next."]));
+    sec.appendChild(h("p", null, ["We truly appreciate the valuable time you gave us. Your answers are in. Our founder personally reads and analyses every response, and yours will help decide what gets built next."]));
     sec.appendChild(h("p", null, ["If you chose to be contacted, we may reach out for a short chat about your experience. Otherwise there is nothing more to do."]));
     var text = "A 3-minute survey for people who sell on Facebook, Instagram or WhatsApp. No sign-in:";
     var wa = h("a", { class: "btn soft", target: "_blank", rel: "noopener", href: "https://wa.me/?text=" + encodeURIComponent(text + " " + shareUrl()) }, ["Send on WhatsApp"]);
